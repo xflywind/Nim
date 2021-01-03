@@ -1,9 +1,8 @@
 discard """
-  action: run
+  targets: "c js"
   matrix:"; -d:nimTmathCase2 -d:danger --passc:-ffast-math"
 """
 
-# xxx: fix bugs for js then add: targets:"c js"
 
 import math, random, os
 import unittest
