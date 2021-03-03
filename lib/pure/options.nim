@@ -7,22 +7,24 @@
 #    distribution, for details about the copyright.
 #
 
-## This module implements types which encapsulate an optional value.
-##
-## A value of type `Option[T]` either contains a value `x` (represented as
-## `some(x)`) or is empty (`none(T)`).
-##
-## This can be useful when you have a value that can be present or not. The
-## absence of a value is often represented by `nil`, but that is not always
-## available, nor is it always a good solution.
-##
-##
-## Basic usage
-## ===========
-##
-## Let's start with an example: a procedure that finds the index of a character
-## in a string.
-##
+##[
+This module implements types which encapsulate an optional value.
+
+A value of type `Option[T]` either contains a value `x` (represented as
+`some(x)`) or is empty (`none(T)`).
+
+This can be useful when you have a value that can be present or not. The
+absence of a value is often represented by `nil`, but that is not always
+available, nor is it always a good solution.
+
+
+Basic usage
+===========
+
+Let's start with an example: a procedure that finds the index of a character
+in a string.
+]##
+
 runnableExamples:
   proc find(haystack: string, needle: char): Option[int] =
     for i, c in haystack:
@@ -34,11 +36,37 @@ runnableExamples:
   let found = "abc".find('c')
   assert found.isSome and found.get() == 2
 
-## The `get` operation demonstrated above returns the underlying value, or
-## raises `UnpackDefect` if there is no value. Note that `UnpackDefect`
-## inherits from `system.Defect` and should therefore never be caught.
-## Instead, rely on checking if the option contains a value with the
-## `isSome <#isSome,Option[T]>`_ and `isNone <#isNone,Option[T]>`_ procs.
+##[
+The `get` operation demonstrated above returns the underlying value, or
+raises `UnpackDefect` if there is no value. Note that `UnpackDefect`
+inherits from `system.Defect` and should therefore never be caught.
+Instead, rely on checking if the option contains a value with the
+`isSome <#isSome,Option[T]>`_ and `isNone <#isNone,Option[T]>`_ procs.
+
+
+Pattern matching
+================
+
+.. note:: This requires the [fusion](https://github.com/nim-lang/fusion) package.
+
+[fusion/matching](https://nim-lang.github.io/fusion/src/fusion/matching.html)
+supports pattern matching on `Option`s, with the `Some(<pattern>)` and
+`None()` patterns.
+
+.. code-block:: nim
+  {.experimental: "caseStmtMacros".}
+
+  import fusion/matching
+
+  case some(42)
+  of Some(@a):
+    assert a == 42
+  of None():
+    assert false
+
+  assertMatch(some(some(none(int))), Some(Some(None())))
+]##
+# xxx pending https://github.com/timotheecour/Nim/issues/376 use `runnableExamples` and `whichModule`
 
 
 import std/typetraits
@@ -278,8 +306,8 @@ proc flatMap*[T, R](self: Option[T],
 proc filter*[T](self: Option[T], callback: proc (input: T): bool): Option[T] {.inline.} =
   ## Applies a `callback` to the value of the `Option`.
   ##
-  ## If the `callback` returns `true`, the option is returned as `Some`.
-  ## If it returns `false`, it is returned as `None`.
+  ## If the `callback` returns `true`, the option is returned as `some`.
+  ## If it returns `false`, it is returned as `none`.
   ##
   ## **See also:**
   ## * `flatMap proc <#flatMap,Option[A],proc(A)>`_
@@ -297,8 +325,8 @@ proc filter*[T](self: Option[T], callback: proc (input: T): bool): Option[T] {.i
     self
 
 proc `==`*[T](a, b: Option[T]): bool {.inline.} =
-  ## Returns `true` if both `Option`s are `None`,
-  ## or if they are both `Some` and have equal values.
+  ## Returns `true` if both `Option`s are `none`,
+  ## or if they are both `some` and have equal values.
   runnableExamples:
     let
       a = some(42)
@@ -318,18 +346,24 @@ proc `==`*[T](a, b: Option[T]): bool {.inline.} =
 proc `$`*[T](self: Option[T]): string =
   ## Get the string representation of the `Option`.
   runnableExamples:
-    assert $some(42) == "Some(42)"
-    assert $none(int) == "None[int]"
+    assert $some(42) == "some(42)"
+    assert $none(int) == "none(int)"
 
   if self.isSome:
-    result = "Some("
+    when defined(nimLagacyOptionsDollar):
+      result = "Some("
+    else:
+      result = "some("
     result.addQuoted self.val
     result.add ")"
   else:
-    result = "None[" & name(T) & "]"
+    when defined(nimLagacyOptionsDollar):
+      result = "None[" & name(T) & "]"
+    else:
+      result = "none(" & name(T) & ")"
 
 proc unsafeGet*[T](self: Option[T]): lent T {.inline.}=
-  ## Returns the value of a `Some`. The behavior is undefined for `None`.
+  ## Returns the value of a `some`. The behavior is undefined for `none`.
   ##
   ## **Note:** Use this only when you are **absolutely sure** the value is present
   ## (e.g. after checking with `isSome <#isSome,Option[T]>`_).

@@ -830,7 +830,7 @@ problem!)
 
 .. code-block:: nim
     :test: "nim c $1"
-  import strformat
+  import std/strformat
 
   var fib_n {.compileTime.}: int
   var fib_prev {.compileTime.}: int
@@ -2113,7 +2113,7 @@ modeled as a string. However, using string templates and filling in the
 values is vulnerable to the famous `SQL injection attack`:idx:\:
 
 .. code-block:: nim
-  import strutils
+  import std/strutils
 
   proc query(db: DbHandle, statement: string) = ...
 
@@ -2145,7 +2145,7 @@ subtype relation between the abstract type and its base type. Explicit type
 conversions from ``string`` to ``SQL`` are allowed:
 
 .. code-block:: nim
-  import strutils, sequtils
+  import std/[strutils, sequtils]
 
   proc properQuote(s: string): SQL =
     # quotes a string properly for an SQL statement
@@ -2791,7 +2791,7 @@ Const section
 A const section declares constants whose values are constant expressions:
 
 .. code-block::
-  import strutils
+  import std/[strutils]
   const
     roundPi = 3.1415
     constEval = contains("abc", 'b') # computed at compile time!
@@ -3678,6 +3678,48 @@ Is short for:
 
 
 
+Routines
+--------
+
+A routine is a symbol of kind: `proc`, `func`, `method`, `iterator`, `macro`, `template`, `converter`.
+
+Type bound operators
+--------------------
+
+A type bound operator is a `proc` or `func` whose name starts with `=` but isn't an operator
+(i.e. containing only symbols, such as `==`). These are unrelated to setters
+(see `properties <manual.html#procedures-properties>`_), which instead end in `=`.
+A type bound operator declared for a type applies to the type regardless of whether
+the operator is in scope (including if it is private).
+
+.. code-block:: nim
+  # foo.nim:
+  var witness* = 0
+  type Foo[T] = object
+  proc initFoo*(T: typedesc): Foo[T] = discard
+  proc `=destroy`[T](x: var Foo[T]) = witness.inc # type bound operator
+
+  # main.nim:
+  import foo
+  block:
+    var a = initFoo(int)
+    doAssert witness == 0
+  doAssert witness == 1
+  block:
+    var a = initFoo(int)
+    doAssert witness == 1
+    `=destroy`(a) # can be called explicitly, even without being in scope
+    doAssert witness == 2
+  # will still be called upon exiting scope
+  doAssert witness == 3
+
+Type bound operators currently include:
+``=destroy``, ``=copy``, ``=sink``, ``=trace``, ``=dispose``, ``=deepcopy``
+(some of which are still implementation defined and not yet documented).
+
+For more details on some of those procs, see
+`lifetimeminustracking-hooks <destructors.html#lifetimeminustracking-hooks>`_.
+
 Nonoverloadable builtins
 ------------------------
 
@@ -4193,7 +4235,7 @@ parameters of an outer factory proc:
 The call can be made more like an inline iterator with a for loop macro:
 
 .. code-block:: nim
-  import macros
+  import std/macros
   macro toItr(x: ForLoopStmt): untyped =
     let expr = x[0]
     let call = x[1][1] # Get foo out of toItr(foo)
@@ -4327,7 +4369,7 @@ needs to fit the types of ``except`` branches, but the type of the ``finally``
 branch always has to be ``void``:
 
 .. code-block:: nim
-  from strutils import parseInt
+  from std/strutils import parseInt
 
   let x = try: parseInt("133a")
           except: -1
@@ -4763,7 +4805,6 @@ The following example shows how a generic binary tree can be modeled:
 The ``T`` is called a `generic type parameter`:idx: or
 a `type variable`:idx:.
 
-
 Is operator
 -----------
 
@@ -4819,6 +4860,12 @@ more complex type classes:
     for key, value in fieldPairs(rec):
       echo key, " = ", value
 
+Type constraints on generic parameters can be grouped with `,` and propagation
+stops with `;`, similarly to parameters for macros and templates:
+
+.. code-block:: nim
+  proc fn1[T; U, V: SomeFloat]() = discard # T is unconstrained
+  template fn2(t; u, v: SomeFloat) = discard # t is unconstrained
 
 Whilst the syntax of type classes appears to resemble that of ADTs/algebraic data
 types in ML-like languages, it should be understood that type classes are static
@@ -5423,7 +5470,7 @@ Another common example is this:
     :test: "nim c $1"
     :status: 1
 
-  from sequtils import toSeq
+  from std/sequtils import toSeq
 
   iterator something: string =
     yield "Hello"
@@ -5443,7 +5490,7 @@ binds to symbols prohibits this.
     :test: "nim c $1"
     :status: 1
 
-   import sequtils
+   import std/sequtils
 
    var myItems = @[1,3,3,7]
    let N1 = count(myItems, 3) # OK
@@ -5489,7 +5536,7 @@ variable number of arguments:
 
   # to work with Nim syntax trees, we need an API that is defined in the
   # ``macros`` module:
-  import macros
+  import std/macros
 
   macro debug(args: varargs[untyped]): untyped =
     # `args` is a collection of `NimNode` values that each contain the
@@ -5548,7 +5595,7 @@ builtin can be used for that:
 .. code-block:: nim
     :test: "nim c $1"
 
-  import macros
+  import std/macros
 
   macro debug(n: varargs[typed]): untyped =
     result = newNimNode(nnkStmtList, n)
@@ -5596,7 +5643,7 @@ statement. The following example should show how this feature could be
 used for a lexical analyzer.
 
 .. code-block:: nim
-  import macros
+  import std/macros
 
   macro case_token(args: varargs[untyped]): untyped =
     echo args.treeRepr
@@ -5633,7 +5680,7 @@ type ``system.ForLoopStmt`` can rewrite the entirety of a ``for`` loop:
 .. code-block:: nim
     :test: "nim c $1"
 
-  import macros
+  import std/macros
 
   macro enumerate(x: ForLoopStmt): untyped =
     expectKind x, nnkForStmt
@@ -5716,7 +5763,7 @@ One can force an expression to be evaluated at compile time as a constant
 expression by coercing it to a corresponding ``static`` type:
 
 .. code-block:: nim
-  import math
+  import std/math
 
   echo static(fac(5)), " ", static[bool](16.isPowerOfTwo)
 
@@ -5796,7 +5843,7 @@ simply passed as a ``NimNode`` to the macro, like everything else.
 
 .. code-block:: nim
 
-  import macros
+  import std/macros
 
   macro forwardType(arg: typedesc): typedesc =
     # ``arg`` is of type ``NimNode``
@@ -5894,7 +5941,7 @@ imported:
     :test: "nim c $1"
     :status: 1
 
-  import strutils except `%`, toUpperAscii
+  import std/strutils except `%`, toUpperAscii
 
   # doesn't work then:
   echo "$1" % "abc".toUpperAscii
@@ -5937,7 +5984,7 @@ Module names in imports
 A module alias can be introduced via the ``as`` keyword:
 
 .. code-block:: nim
-  import strutils as su, sequtils as qu
+  import std/strutils as su, std/sequtils as qu
 
   echo su.format("$1", "lalelu")
 
@@ -6001,7 +6048,7 @@ full qualification:
 .. code-block:: nim
     :test: "nim c $1"
 
-  from strutils import `%`
+  from std/strutils import `%`
 
   echo "$1" % "abc"
   # always possible: full qualification:
@@ -6214,7 +6261,7 @@ but accessed at runtime:
 .. code-block:: nim
     :test: "nim c -r $1"
 
-  import macros
+  import std/macros
 
   var nameToProc {.compileTime.}: seq[(string, proc (): string {.nimcall.})]
 
@@ -6607,7 +6654,7 @@ is uncertain (it may be removed at any time).
 Example:
 
 .. code-block:: nim
-  import threadpool
+  import std/threadpool
   {.experimental: "parallel".}
 
   proc threadedEcho(s: string, i: int) =
@@ -7587,7 +7634,7 @@ The ``dynlib`` pragma supports not only constant strings as an argument but also
 string expressions in general:
 
 .. code-block:: nim
-  import os
+  import std/os
 
   proc getDllName: string =
     result = "mylib.dll"

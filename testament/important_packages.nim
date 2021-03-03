@@ -1,4 +1,18 @@
-# xxx instead of pkg1, pkg2, use the more flexible `NIM_TESTAMENT_BATCH` (see #14823).
+##[
+## note
+`useHead` should ideally be used as the default but lots of packages (e.g. `chronos`)
+don't have release tags (or have really old ones compared to HEAD), making it
+impossible to test them reliably here.
+
+packages listed here should ideally have regularly updated release tags, so that:
+* we're testing recent versions of the package
+* the version that's tested is stable enough even if HEAD may occasionally break
+]##
+
+
+#[
+xxx instead of pkg1, pkg2, use the more flexible `NIM_TESTAMENT_BATCH` (see #14823).
+]#
 
 template pkg1(name: string; cmd = "nimble test"; url = "", useHead = true): untyped =
   packages1.add((name, cmd, url, useHead))
@@ -104,6 +118,7 @@ pkg2 "optionsutils"
 pkg2 "ormin", "nim c -o:orminn ormin.nim"
 pkg2 "parsetoml"
 pkg2 "patty"
+pkg2 "pixie", useHead = false
 pkg2 "plotly", "nim c examples/all.nim"
 pkg2 "pnm"
 pkg2 "polypbren"

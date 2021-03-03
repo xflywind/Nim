@@ -38,7 +38,7 @@ runnableExamples:
 ## `method call syntax<manual.html#procedures-method-call-syntax>`_:
 
 runnableExamples:
-  from sequtils import map
+  from std/sequtils import map
 
   let jenny = "867-5309"
   assert jenny.split('-').map(parseInt) == @[867, 5309]
@@ -2205,7 +2205,7 @@ func escape*(s: string, prefix = "\"", suffix = "\""): string {.rtl,
   ##
   ## See also:
   ## * `unescape func<#unescape,string,string,string>`_ for the opposite
-  ## operation
+  ##   operation
   result = newStringOfCap(s.len + s.len shr 2)
   result.add(prefix)
   for c in items(s):
@@ -2753,6 +2753,7 @@ func strip*(s: string, leading = true, trailing = true,
   ## If both are false, the string is returned unchanged.
   ##
   ## See also:
+  ## * `strip proc<strbasics.html#strip,string,set[char]>`_ Inplace version.
   ## * `stripLineEnd func<#stripLineEnd,string>`_
   runnableExamples:
     let a = "  vhellov   "

@@ -797,11 +797,11 @@ proc renderHeadline(d: PDoc, n: PRstNode, result: var string) =
     spaces(max(0, n.level)) & tmp)
 
 proc renderOverline(d: PDoc, n: PRstNode, result: var string) =
-  if d.meta[metaTitle].len == 0:
+  if n.level == 0 and d.meta[metaTitle].len == 0:
     for i in countup(0, len(n)-1):
       renderRstToOut(d, n.sons[i], d.meta[metaTitle])
     d.currentSection = d.meta[metaTitle]
-  elif d.meta[metaSubtitle].len == 0:
+  elif n.level == 0 and d.meta[metaSubtitle].len == 0:
     for i in countup(0, len(n)-1):
       renderRstToOut(d, n.sons[i], d.meta[metaSubtitle])
     d.currentSection = d.meta[metaSubtitle]
@@ -920,8 +920,11 @@ proc parseCodeBlockField(d: PDoc, n: PRstNode, params: var CodeBlockParams) =
   of "test":
     params.testCmd = n.getFieldValue.strip
     if params.testCmd.len == 0:
-      params.testCmd = "$nim r --backend:$backend $options" # see `interpSnippetCmd`
+      # factor with D20210224T221756. Note that `$docCmd` should appear before `$file`
+      # but after all other options, but currently `$options` merges both options and `$file` so it's tricky.
+      params.testCmd = "$nim r --backend:$backend --lib:$libpath $docCmd $options"
     else:
+      # consider whether `$docCmd` should be appended here too
       params.testCmd = unescape(params.testCmd)
   of "status", "exitcode":
     var status: int
@@ -1066,45 +1069,45 @@ proc renderEnumList(d: PDoc, n: PRstNode, result: var string) =
     specStart = ""
     i1 = 0
     pre = ""
-    i2 = n.text.len-1
+    i2 = n.labelFmt.len - 1
     post = ""
-  if n.text[0] == '(':
+  if n.labelFmt[0] == '(':
     i1 = 1
     pre = "("
-  if n.text[^1] == ')' or n.text[^1] == '.':
-    i2 = n.text.len-2
-    post = $n.text[^1]
+  if n.labelFmt[^1] == ')' or n.labelFmt[^1] == '.':
+    i2 = n.labelFmt.len - 2
+    post = $n.labelFmt[^1]
   let enumR = i1 .. i2  # enumerator range without surrounding (, ), .
   if d.target == outLatex:
-    result.add ("\n%"&n.text&"\n")
+    result.add ("\n%" & n.labelFmt & "\n")
     # use enumerate parameters from package enumitem
-    if n.text[i1].isDigit:
+    if n.labelFmt[i1].isDigit:
       var labelDef = ""
       if pre != "" or post != "":
         labelDef = "label=" & pre & "\\arabic*" & post & ","
-      if n.text[enumR] != "1":
-        specStart = "start=$1" % [n.text[enumR]]
+      if n.labelFmt[enumR] != "1":
+        specStart = "start=$1" % [n.labelFmt[enumR]]
       if labelDef != "" or specStart != "":
         specifier = "[$1$2]" % [labelDef, specStart]
     else:
       let (first, labelDef) =
-        if n.text[i1].isUpperAscii: ('A', "label=" & pre & "\\Alph*" & post)
+        if n.labelFmt[i1].isUpperAscii: ('A', "label=" & pre & "\\Alph*" & post)
         else: ('a', "label=" & pre & "\\alph*" & post)
-      if n.text[i1] != first:
-        specStart = ",start=" & $(ord(n.text[i1]) - ord(first) + 1)
+      if n.labelFmt[i1] != first:
+        specStart = ",start=" & $(ord(n.labelFmt[i1]) - ord(first) + 1)
       specifier = "[$1$2]" % [labelDef, specStart]
   else:  # HTML
     # TODO: implement enumerator formatting using pre and post ( and ) for HTML
-    if n.text[i1].isDigit:
-      if n.text[enumR] != "1":
-        specStart = " start=\"$1\"" % [n.text[enumR]]
+    if n.labelFmt[i1].isDigit:
+      if n.labelFmt[enumR] != "1":
+        specStart = " start=\"$1\"" % [n.labelFmt[enumR]]
       specifier = "class=\"simple\"" & specStart
     else:
       let (first, labelDef) =
-        if n.text[i1].isUpperAscii: ('A', "class=\"upperalpha simple\"")
+        if n.labelFmt[i1].isUpperAscii: ('A', "class=\"upperalpha simple\"")
         else: ('a', "class=\"loweralpha simple\"")
-      if n.text[i1] != first:
-        specStart = " start=\"$1\"" % [ $(ord(n.text[i1]) - ord(first) + 1) ]
+      if n.labelFmt[i1] != first:
+        specStart = " start=\"$1\"" % [ $(ord(n.labelFmt[i1]) - ord(first) + 1) ]
       specifier = labelDef & specStart
   renderAux(d, n, "<ol$2 " & specifier & ">$1</ol>\n",
             "\\begin{enumerate}" & specifier & "$2$1\\end{enumerate}\n",
@@ -1115,7 +1118,7 @@ proc renderAdmonition(d: PDoc, n: PRstNode, result: var string) =
     htmlCls = "admonition_warning"
     texSz = "\\large"
     texColor = "orange"
-  case n.text
+  case n.adType
   of "hint", "note", "tip":
     htmlCls = "admonition-info"; texSz = "\\normalsize"; texColor = "green"
   of "attention", "admonition", "important", "warning":
@@ -1123,7 +1126,7 @@ proc renderAdmonition(d: PDoc, n: PRstNode, result: var string) =
   of "danger", "error":
     htmlCls = "admonition-error"; texSz = "\\Large"; texColor = "red"
   else: discard
-  let txt = n.text.capitalizeAscii()
+  let txt = n.adType.capitalizeAscii()
   let htmlHead = "<div class=\"admonition " & htmlCls & "\">"
   renderAux(d, n,
       htmlHead & "<span$2 class=\"" & htmlCls & "-text\"><b>" & txt &
@@ -1137,7 +1140,7 @@ proc renderRstToOut(d: PDoc, n: PRstNode, result: var string) =
   if n == nil: return
   case n.kind
   of rnInner: renderAux(d, n, result)
-  of rnHeadline: renderHeadline(d, n, result)
+  of rnHeadline, rnMarkdownHeadline: renderHeadline(d, n, result)
   of rnOverline: renderOverline(d, n, result)
   of rnTransition: renderAux(d, n, "<hr$2 />\n", "\\hrule$2\n", result)
   of rnParagraph: renderAux(d, n, "<p$2>$1</p>\n", "$2\n$1\n\n", result)
@@ -1191,19 +1194,19 @@ proc renderRstToOut(d: PDoc, n: PRstNode, result: var string) =
   of rnQuotedLiteralBlock:
     doAssert false, "renderRstToOut"
   of rnLineBlock:
-    if n.sons.len == 1 and n.sons[0].text == "\n":
+    if n.sons.len == 1 and n.sons[0].lineIndent == "\n":
       # whole line block is one empty line, no need to add extra spacing
       renderAux(d, n, "<p$2>$1</p> ", "\n\n$2\n$1", result)
     else:  # add extra spacing around the line block for Latex
       renderAux(d, n, "<p$2>$1</p>",
         "\n\\vspace{0.5em}$2\n$1\\vspace{0.5em}\n", result)
   of rnLineBlockItem:
-    if n.text.len == 0:  # normal case - no additional indentation
+    if n.lineIndent.len == 0:  # normal case - no additional indentation
       renderAux(d, n, "$1<br/>", "\\noindent $1\n\n", result)
-    elif n.text == "\n":  # add one empty line
+    elif n.lineIndent == "\n":  # add one empty line
       renderAux(d, n, "<br/>", "\\vspace{1em}\n", result)
     else:  # additional indentation w.r.t. '| '
-      let indent = $(0.5 * (n.text.len - 1).toFloat) & "em"
+      let indent = $(0.5 * (n.lineIndent.len - 1).toFloat) & "em"
       renderAux(d, n,
         "<span style=\"margin-left: " & indent & "\">$1</span><br/>",
         "\\noindent\\hspace{" & indent & "}$1\n\n", result)
@@ -1233,8 +1236,6 @@ proc renderRstToOut(d: PDoc, n: PRstNode, result: var string) =
     renderAux(d, n, "<td>$1</td>", "$1", result)
   of rnTableHeaderCell:
     renderAux(d, n, "<th>$1</th>", "\\textbf{$1}", result)
-  of rnLabel:
-    doAssert false, "renderRstToOut" # used for footnotes and other
   of rnFootnoteGroup:
     renderAux(d, n,
       "<hr class=\"footnote\">" &

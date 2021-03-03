@@ -41,8 +41,10 @@
 - Added `randState` template that exposes the default random number generator.
   Useful for library authors.
 
-- Added std/enumutils module containing `genEnumCaseStmt` macro that generates
-  case statement to parse string to enum.
+- Added `std/enumutils` module. Added `genEnumCaseStmt` macro that generates case statement to parse string to enum.
+  Added `items` for enums with holes.
+
+- Added `typetraits.SomeEnumWithHoles` for enums with holes.
 
 - Removed deprecated `iup` module from stdlib, it has already moved to
   [nimble](https://github.com/nim-lang/iup).
@@ -65,6 +67,8 @@
 
 - `os.FileInfo` (returned by `getFileInfo`) now contains `blockSize`,
   determining preferred I/O block size for this file object.
+
+- Added a simpler to use `io.readChars` overload.
 
 - `repr` now doesn't insert trailing newline; previous behavior was very inconsistent,
   see #16034. Use `-d:nimLegacyReprWithNewline` for previous behavior.
@@ -126,7 +130,7 @@ with other backends. see #9125. Use `-d:nimLegacyJsRound` for previous behavior.
 
 - Deprecated `any`. See https://github.com/nim-lang/RFCs/issues/281
 
-- Added `std/sysrand` module to get random numbers from a secure source 
+- Added `std/sysrand` module to get random numbers from a secure source
 provided by the operating system.
 
 - Added optional `options` argument to `copyFile`, `copyFileToDir`, and
@@ -145,9 +149,11 @@ provided by the operating system.
 - Added experimental `linenoise.readLineStatus` to get line and status (e.g. ctrl-D or ctrl-C).
 
 - Added `compilesettings.SingleValueSetting.libPath`
+
 - `std/wrapnils` doesn't use `experimental:dotOperators` anymore, avoiding
   issues like https://github.com/nim-lang/Nim/issues/13063 (which affected error messages)
   for modules importing `std/wrapnils`.
+  Added `??.` macro which returns an `Option`.
 
 - Added `math.frexp` overload procs. Deprecated `c_frexp`, use `frexp` instead.
 
@@ -166,6 +172,23 @@ provided by the operating system.
   This lets the OS perform its default actions, which might include core
   dumping (on select signals) and notifying the parent process about the cause
   of termination.
+
+- Added `system.prepareStrMutation` for better support of low
+  level `moveMem`, `copyMem` operations for Orc's copy-on-write string
+  implementation.
+
+- `hashes.hash` now supports `object`, but can be overloaded.
+
+- Added `std/strbasics` for high performance string operations.
+  Added `strip`, `setSlice`, `add(a: var string, b: openArray[char])`.
+
+- `hashes.hash` now supports `object`, but can be overloaded.
+
+- Added to `wrapnils` an option-like API via `??.`, `isSome`, `get`.
+
+- `std/options` changed `$some(3)` to `"some(3)"` instead of `"Some(3)"`
+  and `$none(int)` to `"none(int)"` instead of `"None[int]"`.
+
 
 ## Language changes
 
@@ -191,6 +214,8 @@ provided by the operating system.
 
 - Deprecated `TaintedString` and `--taintmode`.
 
+- Deprecated `--nilseqs` which is now a noop.
+
 - Source+Edit links now appear on top of every docgen'd page when
   `nim doc --git.url:url ...` is given.
 
@@ -213,6 +238,8 @@ provided by the operating system.
   adding: `default-role:: code` directive inside the rst file, which is now handled by rst2html.
 
 - Added `-d:nimStrictMode` in CI in several places to ensure code doesn't have certain hints/warnings
+
+- Added `then`, `catch` to `asyncjs`, for now hidden behind `-d:nimExperimentalAsyncjsThen`.
 
 ## Tool changes
 
