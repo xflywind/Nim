@@ -118,7 +118,7 @@ proc generateJsasync(arg: NimNode): NimNode =
     var resolve: NimNode
     if isVoid:
       resolve = quote:
-        var `jsResolve` {.importcpp: "undefined".}: Future[void]
+        var `jsResolve` {.importjs: "undefined".}: Future[void]
     else:
       resolve = quote:
         proc jsResolve[T](a: T): Future[T] {.importjs: "#", used.}
