@@ -8,21 +8,12 @@
 #
 
 # set handling
-from std/private/vmutils import forwardImpl, toUnsigned
-
-
-const useBuiltins = not defined(noIntrinsicsBitOpts)
-const noUndefined = defined(noUndefinedBitOpts)
-const useGCC_builtins = (defined(gcc) or defined(llvm_gcc) or
-                         defined(clang)) and useBuiltins
-const useICC_builtins = defined(icc) and useBuiltins
-const useVCC_builtins = defined(vcc) and useBuiltins
 
 type
   NimSet = array[0..4*2048-1, uint8]
 
 
-proc cardSet*(s: NimSet, len: int): int {.compilerproc, inline.} =
+proc cardSet(s: NimSet, len: int): int {.compilerproc, inline.} =
   var i = 0
   result = 0
   when defined(x86) or defined(amd64):
@@ -33,8 +24,3 @@ proc cardSet*(s: NimSet, len: int): int {.compilerproc, inline.} =
   while i < len:
     inc(result, countBits32(uint32(s[i])))
     inc(i, 1)
-
-
-when not declared(ThisIsSystem):
-  export useBuiltins, noUndefined, useGCC_builtins, useICC_builtins, useVCC_builtins
-  export countSetBitsImpl
